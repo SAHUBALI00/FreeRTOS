@@ -15,7 +15,10 @@
 #define INCLUDE_vTaskDelete    1
 #define vApplicationTickHook 1
 #define configUSE_MUTEXES    1
-
+#define configUSE_COUNTING_SEMAPHORES 1
+#define configCHECK_FOR_STACK_OVERFLOW    2
+#define INCLUDE_uxTaskGetStackHighWaterMark    1
+#define configUSE_APPLICATION_TASK_TAG    1
 
 #define configUSE_TIMERS             1
 #define configTIMER_TASK_PRIORITY    (configMAX_PRIORITIES - 1)

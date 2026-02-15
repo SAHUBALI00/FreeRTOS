@@ -1,108 +1,137 @@
-#include"FreeRTOS.h"
-#include"task.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include "queue.h"
-#include"semphr.h"
-#include"timers.h"
-#include"event_groups.h"
+#include "semphr.h"
+#include "timers.h"
+#include "event_groups.h"
+#include "lcd.h"
 
+TaskHandle_t xHandlerTaskHandle = NULL;
+EventGroupHandle_t xHealthCheckEvent;
 
- // Force it to look at the start of Flash
-// QueueHandle_t xHeartbeatQueue;
-SemaphoreHandle_t xBinarySemaphore;
-SemaphoreHandle_t xMutex;
-volatile uint32_t shared_resource = 0;
-TimerHandle_t xTimer;
-EventGroupHandle_t xStartupEventGroup;
+#define bit0 (1<<0)
+#define bit1 (1<<1)
 
-#define BIT_TASK1_READY ( 0 )
-#define BIT_TASK2_READY ( 1 << 1 )
-static int c=0;
-static void vTask1(void *pvParameters) {
-    // Simulate some work
-    vTaskDelay(pdMS_TO_TICKS(1000));
-
-    // Set Bit 0 to say "I'm ready!"
-    xEventGroupSetBits(xStartupEventGroup, BIT_TASK1_READY);
-    vTaskDelete(NULL);
-}
-
-static void vTask2(void *pvParameters) {
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
-    // Set Bit 1 to say "I'm ready!"
-    xEventGroupSetBits(xStartupEventGroup, BIT_TASK2_READY);
-    vTaskDelete(NULL);
-}
-
-static void vTask3(void *pvParameters) {
-    // Wait for BOTH bits to be set
-    xEventGroupWaitBits(
-        xStartupEventGroup,    // The group
-        BIT_TASK1_READY | BIT_TASK2_READY, // Bits to wait for
-        pdTRUE,                // Clear bits on exit?
-        pdTRUE,                // Wait for ALL bits (AND logic)?
-        portMAX_DELAY          // Wait forever
-    );
-
-    // This only prints AFTER Task 1 and Task 2 are done
-    while(1) {
-        // Main system logic starts here...
-        c++;
+static int c = 0;
+//this is the handle task
+//should have the high priority to ensure it runs immediately after the interrupt.
+static void task1(void *prParameteres){
+    //health check perform
+    // for(int i=0; i<50000;i++);
+    // xEventGroupSetBits(xHealthCheckEvent, bit0);
+    // vTaskDelete(NULL);  //null represents the current task
+    while(1){
+        setup();
     }
+
 }
-void vMyTimerCallback(TimerHandle_t xTimer) {
-    // This code runs every time the timer expires
-    static int timer_count = 0;
-    timer_count++;
+static void task2(void *prParameteres){
+    //health check perform
+    //        for(int i=0; i<50000;i++);
+    // xEventGroupSetBits(xHealthCheckEvent, bit1);
+    // vTaskDelete(NULL);  //null represents the current task
+    while(1);
 }
 
-extern uint32_t _sidata; //src (ROM)
-extern uint32_t _sdata; //destn start (RAM)
-extern uint32_t _edata; //destn end
+static void vHandlerTask(void *pvParameters)
+{
+    UBaseType_t uxHighWaterMark;
+    static int incrementData;
+
+    xEventGroupWaitBits(xHealthCheckEvent, (bit0|bit1) ,pdFALSE,pdFALSE,portMAX_DELAY);
+    while (1)
+    {
+        ulTaskNotifyTake(pdFALSE,portMAX_DELAY);
+
+        incrementData++;
+        uxHighWaterMark=uxTaskGetStackHighWaterMark(NULL);
+
+    }
+
+
+
+
+}
+//the ISR
+//in a real mCEU, this would be linked to a hardware vector
+static void vExampleInterruptHandler(void)
+{
+    BaseType_t xHigherPriorityTaskWoken=pdFALSE;
+
+
+
+    vTaskNotifyGiveFromISR(xHandlerTaskHandle, &xHigherPriorityTaskWoken);
+
+
+portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+
+}
+//trigger task(hardware)
+static void vTrigger(void *pvParameters){
+    while (1)
+    {
+         for(int i=0; i<3; i++){
+        //manually triggering interrupt
+        vExampleInterruptHandler();
+        vTaskDelay(pdMS_TO_TICKS(5000));
+         }
+    }
+
+}
+
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
+    // If the debugger hits this loop, you've shrunk the stack too much!
+    // 'pcTaskName' will tell you which task ran out of breath.
+    while(1);
+}
+
+extern uint32_t _sidata; // src (ROM)
+extern uint32_t _sdata;  // destn start (RAM)
+extern uint32_t _edata;  // destn end
 extern uint32_t _sbss;
 extern uint32_t _ebss;
 
-
 BaseType_t xReturn;
 
-void start(){
+void start()
+{
 
-
-    //INtialsing .data section (copy from FLASH To RAM)
+    // INtialsing .data section (copy from FLASH To RAM)
     uint32_t *src = &_sidata;
     uint32_t *des = &_sdata;
-    uint32_t *des_end= &_edata;
-    uint32_t *des_bss= &_sbss;
-    uint32_t *des_end_bss= &_ebss;
+    uint32_t *des_end = &_edata;
+    uint32_t *des_bss = &_sbss;
+    uint32_t *des_end_bss = &_ebss;
 
-
-
-    while(des < des_end){
+    while (des < des_end)
+    {
         *des = *src;
         des++;
         src++;
     }
-    //intialise .bss section
-    while(des_bss < des_end_bss){
+    // intialise .bss section
+    while (des_bss < des_end_bss)
+    {
         *des_bss++ = 0;
     }
 
-    //  // Create a "Auto-Reload" timer that fires every 2000ms (2 seconds)
-    // xTimer = xTimerCreate("MyTimer", pdMS_TO_TICKS(2000), pdTRUE, (void*)0, vMyTimerCallback);
 
-    // if(xTimer != NULL) {
-    //     xTimerStart(xTimer, 0); // Start the timer
-    // }
+    // xInterruptsemahore= xSemaphoreCreateCounting(10,0);
+    xHealthCheckEvent=xEventGroupCreate();
 
-    //    xMutex = xSemaphoreCreateMutex();
-    xStartupEventGroup = xEventGroupCreate();
-       if(xStartupEventGroup != NULL){
-           xReturn = xTaskCreate(vTask1,"T1",70, NULL ,1, NULL );
-      xReturn = xTaskCreate(vTask2,"T2",70, NULL ,1, NULL );
-       xReturn = xTaskCreate(vTask3,"T3",70, NULL ,0, NULL );
+    if (xHealthCheckEvent != NULL)
+    {
+        // xReturn = xTaskCreate(vHandlerTask, "handler", 70, NULL, 1, &xHandlerTaskHandle);
+        // // xReturn = xTaskCreate(vExampleInterruptHandler, "T2", 70, NULL, 1, NULL);
+        // xReturn = xTaskCreate(vTrigger, "Trigger", 70, NULL, 2, NULL);
+        xReturn = xTaskCreate(task1, "task1", 70, NULL, 3, NULL);
+        xReturn = xTaskCreate(task2, "task2", 70, NULL, 3, NULL);
+
+
         // portENABLE_INTERRUPTS();
         //  xPortStartScheduler();
-       vTaskStartScheduler();
-      }
+
+        vTaskStartScheduler();
+    }
     return;
 }
