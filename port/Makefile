@@ -13,6 +13,10 @@ OBJ = boot.o \
 	   $(FREERTOS_PATH)/queue.o \
 	   $(FREERTOS_PATH)/timers.o \
 	   $(FREERTOS_PATH)/event_groups.o \
+	   utilities/i2c_utility.o \
+	   drivers/mpu.o \
+	   drivers/rtc.o \
+	   drivers/lcd.o \
 
 
 INC = -I$(FREERTOS_PATH)/include/ \

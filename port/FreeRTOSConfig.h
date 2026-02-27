@@ -8,7 +8,7 @@
 #define configUSE_PREEMPTION 1
 #define configUSE_IDLE_HOOK 0
 #define configUSE_TICK_HOOK 0
-#define configTOTAL_HEAP_SIZE 0x1000   //4kb
+#define configTOTAL_HEAP_SIZE 6144   //4kb
 #define configCPU_CLOCK_HZ 8000000     //CPU CLOCK FRQ 8MHZ
 #define configTICK_RATE_HZ 10          //10 TIMES ROUND ROBIN IN A SECOND
 #define INCLUDE_vTaskDelay    1
@@ -20,9 +20,9 @@
 #define INCLUDE_uxTaskGetStackHighWaterMark    1
 #define configUSE_APPLICATION_TASK_TAG    1
 
-#define configUSE_TIMERS             1
-#define configTIMER_TASK_PRIORITY    (configMAX_PRIORITIES - 1)
-#define configTIMER_QUEUE_LENGTH     10
-#define configTIMER_TASK_STACK_DEPTH configMINIMAL_STACK_SIZE
+// #define configUSE_TIMERS             1
+// #define configTIMER_TASK_PRIORITY    (configMAX_PRIORITIES - 1)
+// #define configTIMER_QUEUE_LENGTH     10
+// #define configTIMER_TASK_STACK_DEPTH configMINIMAL_STACK_SIZE
 
 #endif

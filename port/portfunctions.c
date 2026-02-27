@@ -1,3 +1,6 @@
+#include "FreeRTOS.h"
+#include "task.h"
+
 void* memset(void *dst, int value, unsigned int size) {
     unsigned char *ptr = (unsigned char *)dst;
     unsigned char byte_value = (unsigned char)value;
@@ -20,4 +23,13 @@ void* memcpy(void *dest, const void *src, unsigned int n) {
     }
 
     return dest;
+}
+// Add this to start.c
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+    /* This function will be called if a task overflows its stack. */
+    /* pcTaskName contains the name of the offending task. */
+
+    // For now, just sit in a loop so you can catch it with a debugger
+    while(1);
 }
